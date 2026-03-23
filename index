@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scrabble Word Whiz - CSW24 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Lexend:wght@700;900&display=swap');
+        
+        :root {
+            --glaucous: #6082B6;
+            --glaucous-dark: #4a6a9b;
+            --glaucous-deep: #2c3e50;
+        }
+
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background: linear-gradient(135deg, #1e293b 0%, #6082B6 100%);
+            color: #334155; 
+            overflow: hidden; 
+        }
+        
+        .heading-font { font-family: 'Lexend', sans-serif; }
+
+        .app-container { width: 100%; height: 100dvh; background: #ffffff; margin: auto; border: 1px solid #334155; }
+        @media (min-width: 500px) {
+            .app-container { 
+                width: min(450px, calc(92dvh * 9 / 16)); 
+                height: min(800px, 92dvh); 
+                border-radius: 3rem; 
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 12px #ffffff, 0 0 0 16px #475569; 
+            }
+        }
+
+        /* Scrabble Tiles */
+        .scrabble-tile { 
+            display: inline-flex; align-items: center; justify-content: center; 
+            width: 58px; height: 58px; background: #fbbf24; 
+            border-radius: 16px; border-bottom: 6px solid #d97706; 
+            font-weight: 900; font-size: 2.2rem; text-transform: uppercase; 
+            color: #1e1b4b;
+            position: relative; 
+            font-family: 'Lexend', sans-serif;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.8);
+        }
+        .scrabble-tile.used { 
+            background-color: #cbd5e1 !important; border-bottom-color: #94a3b8 !important; 
+            color: #64748b !important; transform: scale(0.9) translateY(4px); border-bottom-width: 2px;
+            box-shadow: none;
+        }
+        .tile-value { position: absolute; bottom: 4px; right: 6px; font-size: 0.8rem; font-family: 'Nunito', sans-serif; font-weight: 800; color: #92400e; }
+        
+        .btn-3d {
+            transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            border-bottom-width: 8px;
+            border-radius: 1.5rem;
+        }
+        .btn-3d:active { transform: translateY(4px); border-bottom-width: 2px; }
+
+        .char-btn { border: 3px solid transparent; transition: all 0.2s; border-radius: 1.5rem; }
+        .char-btn.active { border-color: #6082B6; background-color: #f0f9ff; transform: scale(1.1); box-shadow: 0 10px 15px -3px rgba(96, 130, 182, 0.3); }
+
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(3px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-5px, 0, 0); } 40%, 60% { transform: translate3d(5px, 0, 0); } }
+        
+        .found-word-tag { background: #dcfce7; color: #166534; border: 3px solid #86efac; padding: 6px 14px; border-radius: 20px; font-size: 1rem; font-weight: 800; display: inline-block; margin: 4px; text-transform: uppercase; box-shadow: 0 3px 0 #86efac; }
+        .missing-word-tag { background: #fee2e2; color: #991b1b; border: 3px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 1rem; font-weight: 800; display: inline-block; margin: 4px; text-transform: uppercase; box-shadow: 0 3px 0 #fca5a5;}
+        
+        .timer-bar-transition { transition: width 1s linear; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center sm:p-4">
+
+    <div id="app" class="app-container overflow-hidden relative flex flex-col app-content-bg">
+        <!-- Header -->
+        <div id="app-header" class="bg-[#6082B6] p-4 text-white text-center flex-shrink-0 z-10 border-b-6 border-[#4a6a9b] rounded-b-[2rem]">
+            <h1 class="text-2xl font-black flex items-center justify-center gap-2 heading-font tracking-wide">
+                <span class="text-3xl drop-shadow-md">📘</span> Scrabble Whiz
+            </h1>
+            <p class="text-blue-50 text-xs uppercase font-bold tracking-widest mt-1">CSW24 Professional</p>
+        </div>
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="p-6 flex-1 flex flex-col justify-center items-center overflow-y-auto no-scrollbar">
+            <div class="relative w-32 h-32 bg-[#facc15] rounded-[2rem] border-b-8 border-[#ca8a04] shadow-xl flex items-center justify-center mb-6 transform -rotate-3">
+                <span class="text-7xl font-black text-[#6082B6] heading-font drop-shadow-sm">W</span>
+                <span class="absolute bottom-2 right-3 text-2xl font-black text-[#4a6a9b]">4</span>
+            </div>
+            
+            <div class="w-full max-w-sm mb-6 space-y-4 text-center">
+                <label class="block text-[#6082B6] font-black uppercase tracking-widest text-sm">Select Your Buddy</label>
+                <div id="char-selection" class="grid grid-cols-4 gap-3 mb-4 p-2 bg-slate-50 rounded-3xl border-2 border-slate-100">
+                    <button onclick="pickChar('🐱')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm active">🐱</button>
+                    <button onclick="pickChar(' foxes')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🦊</button>
+                    <button onclick="pickChar('🐨')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🐨</button>
+                    <button onclick="pickChar('🐼')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🐼</button>
+                    <button onclick="pickChar('🦁')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🦁</button>
+                    <button onclick="pickChar('🐸')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🐸</button>
+                    <button onclick="pickChar('🐧')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🐧</button>
+                    <button onclick="pickChar('🦉')" class="char-btn text-3xl p-3 rounded-2xl bg-white shadow-sm">🦉</button>
+                </div>
+
+                <label class="block text-[#6082B6] font-black uppercase tracking-widest text-sm">Player Name</label>
+                <input type="text" id="player-name-input" class="w-full p-4 border-4 border-slate-200 rounded-[2rem] text-center text-xl font-black text-[#6082B6] placeholder-slate-300 focus:border-[#6082B6] focus:outline-none transition-all shadow-inner bg-slate-50" placeholder="Type here..." autocomplete="off">
+            </div>
+
+            <button onclick="goToSetup()" class="btn-3d w-full max-w-sm bg-[#6082B6] border-[#4a6a9b] text-white py-5 rounded-[2.5rem] font-black text-xl shadow-xl flex justify-center items-center gap-3">
+                Let's Go! <span class="text-3xl">🎮</span>
+            </button>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="p-5 flex-1 flex flex-col hidden overflow-y-auto no-scrollbar">
+            <div class="flex items-center gap-6 bg-slate-50 p-6 rounded-[2.5rem] shadow-sm border-2 border-slate-100 mb-8">
+                <div id="setup-char-icon" class="bg-white text-6xl p-5 rounded-[2rem] shadow-md border border-slate-100 transform -rotate-3">🐱</div>
+                <div>
+                    <div class="text-sm text-slate-400 font-bold uppercase tracking-widest leading-none mb-2">Welcome,</div>
+                    <div id="setup-player-name" class="font-black text-[#6082B6] text-4xl leading-none">Player</div>
+                </div>
+            </div>
+
+            <div id="main-category-section">
+                <h3 class="text-slate-400 text-xs font-black mb-5 uppercase tracking-widest text-center">Select Mode</h3>
+                <div class="grid grid-cols-2 gap-5">
+                    <button onclick="selectCategory('2', '2 Letters')" class="btn-3d bg-white border-2 border-slate-100 border-b-slate-200 p-6 rounded-[2.5rem] text-center flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">✌️</div>
+                        <div class="font-black text-slate-600 text-2xl">2 Letters</div>
+                    </button>
+                    <button onclick="selectCategory('3', '3 Letters')" class="btn-3d bg-white border-2 border-slate-100 border-b-slate-200 p-6 rounded-[2.5rem] text-center flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🤟</div>
+                        <div class="font-black text-slate-600 text-2xl">3 Letters</div>
+                    </button>
+                    <button onclick="selectCategory('Vowel', 'Vowel Dump')" class="btn-3d bg-white border-2 border-slate-100 border-b-slate-200 p-6 rounded-[2.5rem] text-center flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🍦</div>
+                        <div class="font-black text-sky-500 text-2xl">Vowel Dump</div>
+                    </button>
+                    <button onclick="selectCategory('Bingo', 'Bingo Stems')" class="btn-3d bg-white border-2 border-indigo-50 border-b-indigo-100 p-6 rounded-[2.5rem] text-center flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🎰</div>
+                        <div class="font-black text-[#6082B6] text-2xl">Bingo</div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="sub-category-section" class="hidden flex-1 flex flex-col">
+                <button onclick="backToCategories()" class="text-slate-500 hover:text-[#6082B6] font-black mb-8 flex items-center gap-2 text-sm uppercase tracking-wider transition-all w-fit">⬅️ Back</button>
+                <div class="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] mb-8 shadow-sm">
+                    <label id="selected-cat-name" class="block text-[#6082B6] font-black mb-4 uppercase tracking-widest text-sm text-center"></label>
+                    <select id="subcat-select" class="w-full p-5 border-4 border-slate-50 rounded-[1.5rem] font-black text-xl bg-slate-50 text-[#6082B6] focus:border-[#6082B6] outline-none cursor-pointer appearance-none text-center"></select>
+                </div>
+                <button onclick="startGame()" class="btn-3d w-full bg-[#6082B6] border-[#4a6a9b] text-white py-6 rounded-[2rem] font-black text-2xl mt-auto shadow-lg">Start Game 🎬</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="p-4 flex-1 flex flex-col hidden relative">
+            <div id="pause-overlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-md z-40 hidden flex flex-col items-center justify-center text-white rounded-b-[3rem]">
+                <span class="text-9xl mb-6 drop-shadow-lg">⏸️</span>
+                <span class="text-4xl font-black tracking-widest heading-font mb-10 text-center uppercase text-blue-200">Paused</span>
+                <button onclick="togglePause()" class="btn-3d bg-white border-slate-200 text-[#6082B6] py-5 px-12 rounded-[2rem] font-black text-2xl shadow-2xl flex items-center gap-3 text-center">RESUME ▶️</button>
+            </div>
+            
+            <div class="flex justify-between items-center mb-5 bg-white p-4 rounded-[2rem] shadow-sm border-2 border-slate-50">
+                <div class="flex items-center gap-3 max-w-[50%]">
+                    <div id="game-char-icon" class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-slate-50">🐱</div>
+                    <div class="truncate font-black text-indigo-900 text-lg" id="game-player-name">Player</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-bold text-slate-300 uppercase tracking-widest leading-none">Points</div>
+                    <div id="score" class="text-[#6082B6] text-4xl font-black heading-font leading-none mt-1">0</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between gap-1 mb-4 px-1">
+                <button onclick="exitToHome()" class="text-slate-500 hover:text-red-500 font-bold text-[13px] uppercase flex items-center gap-1 flex-shrink-0 transition-colors">🏠 Quit</button>
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                    <div id="remaining-words-display" class="text-emerald-700 text-[12px] font-black uppercase bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 shadow-sm whitespace-nowrap">Words: 0</div>
+                    <div id="remaining-sets-display" class="text-[#6082B6] text-[12px] font-black uppercase bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-sm whitespace-nowrap">Sets: 0</div>
+                    <div id="progress-display" class="text-slate-600 text-[12px] font-black bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm whitespace-nowrap min-w-[50px] text-center">0 / 0</div>
+                </div>
+                <button id="header-pause-btn" onclick="togglePause()" class="text-slate-500 hover:text-[#6082B6] font-black transition-colors flex-shrink-0"><span class="text-2xl">⏸️</span></button>
+            </div>
+            
+            <div class="w-full bg-slate-100 h-4 rounded-full mb-8 overflow-hidden shadow-inner border border-slate-200">
+                <div id="timer-bar" class="bg-gradient-to-r from-[#8ba5cd] to-[#6082B6] h-full w-full timer-bar-transition rounded-full"></div>
+            </div>
+            
+            <div id="found-words-list" class="flex flex-wrap justify-center content-center min-h-[60px] mb-6 overflow-y-auto no-scrollbar px-2"></div>
+            
+            <div class="flex-1 flex flex-col justify-center mb-6">
+                <div id="tile-display" class="flex flex-col items-center gap-3 mb-10"></div>
+                <input type="text" id="answer-input" class="w-full max-w-[280px] mx-auto text-center text-4xl font-black uppercase tracking-widest outline-none border-b-6 border-slate-100 focus:border-[#6082B6] pb-3 bg-transparent text-[#6082B6] placeholder-slate-200" autocomplete="off" placeholder="____">
+                <div id="feedback" class="text-center h-8 mt-5 font-black text-xl uppercase tracking-widest"></div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-4 mt-auto">
+                <button onclick="checkAnswer()" class="btn-3d col-span-2 bg-emerald-500 border-emerald-700 text-white font-black py-5 rounded-[1.5rem] shadow-md text-2xl tracking-wider">SUBMIT</button>
+                <button onclick="useHint()" class="btn-3d col-span-1 bg-amber-500 border-amber-700 text-white py-5 rounded-[1.5rem] shadow-md text-3xl flex items-center justify-center">💡</button>
+                <button onclick="skipWord()" class="btn-3d col-span-1 bg-slate-200 border-slate-300 text-slate-500 py-5 rounded-[1.5rem] shadow-md text-3xl flex items-center justify-center">⏭️</button>
+            </div>
+        </div>
+
+        <div id="result-screen" class="p-6 text-center flex-1 flex flex-col justify-center hidden">
+            <div id="result-char-icon" class="text-9xl mb-4 animate-bounce drop-shadow-2xl">🐱</div>
+            <h2 class="text-3xl font-black text-slate-800 mb-1 heading-font">Nice Job,</h2>
+            <h3 id="result-player-name" class="text-4xl font-black text-[#6082B6] mb-10 heading-font">Player!</h3>
+            <div class="grid grid-cols-3 gap-3 mb-12">
+                <div class="bg-white border-2 border-slate-100 p-5 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+                    <div class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-1">Score</div>
+                    <div id="final-score" class="text-3xl font-black text-[#6082B6] heading-font truncate">0</div>
+                </div>
+                <div class="bg-white border-2 border-emerald-100 p-5 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+                    <div class="text-xs font-bold text-emerald-400 tracking-widest uppercase mb-1">Sets</div>
+                    <div id="final-solved" class="text-3xl font-black text-emerald-600 heading-font truncate">0</div>
+                </div>
+                <div class="bg-white border-2 border-amber-100 p-5 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+                    <div class="text-xs font-bold text-amber-400 tracking-widest uppercase mb-1">Accuracy</div>
+                    <div id="final-accuracy" class="text-3xl font-black text-[#6082B6] heading-font truncate">0%</div>
+                </div>
+            </div>
+            <div class="mt-auto space-y-4">
+                <button onclick="showStudySheet()" id="study-sheet-btn" class="btn-3d w-full bg-slate-50 border-sky-100 text-sky-700 py-5 rounded-[2.5rem] font-black hidden shadow-sm text-2xl flex items-center justify-center gap-3"><span class="text-3xl">📖</span> Review Misses</button>
+                <button onclick="resetApp()" class="btn-3d w-full bg-[#6082B6] border-[#4a6a9b] text-white py-5 rounded-[2.5rem] font-black shadow-lg text-2xl">Back to Menu 🏠</button>
+            </div>
+        </div>
+
+        <div id="study-modal" class="absolute inset-0 bg-slate-50/95 z-50 hidden flex flex-col p-6 overflow-y-auto no-scrollbar rounded-b-[3rem]">
+            <div class="flex justify-between items-center mb-8 border-b-4 border-slate-200 pb-5 sticky top-0 bg-slate-50/90 backdrop-blur-md pt-2">
+                <h2 class="text-3xl font-black text-indigo-900 flex items-center gap-3 heading-font"><span class="text-4xl">📚</span> Words</h2>
+                <button onclick="closeStudySheet()" class="text-4xl text-[#6082B6] hover:text-red-500 transition-colors bg-white w-12 h-12 rounded-full flex items-center justify-center shadow-md border border-slate-100">&times;</button>
+            </div>
+            <div id="study-content" class="space-y-5 pb-10"></div>
+        </div>
+    </div>
+
+    <script>
+        // Database
+        const CSW24 = {
+            "2": ["AA","AB","AD","AE","AG","AH","AI","AL","AM","AN","AR","AS","AT","AW","AX","AY","BA","BE","BI","BO","BY","CH","DA","DE","DI","DO","EA","ED","EE","EF","EH","EL","EM","EN","ER","ES","ET","EW","EX","FA","FE","FY","GI","GO","GU","HA","HE","HI","HM","HO","ID","IF","IN","IO","IS","IT","JA","JO","KA","KI","KO","KY","LA","LI","LO","MA","ME","MI","MM","MO","MU","MY","NA","NE","NO","NU","NY","OB","OD","OE","OF","OH","OI","OK","OM","ON","OO","OP","OR","OS","OU","OW","OX","OY","PA","PE","PI","PO","QI","RE","SH","SI","SO","ST","TA","TE","TI","TO","UG","UH","UM","UN","UP","UR","US","UT","WE","WO","XI","XU","YA","YE","YO","YU","ZA","ZE","ZO"],
+            "3": "AAH AAL AAS ABA ABB ABS ABY ACE ACH ACK ACT ADD ADO ADS ADZ AFF AFT AGA AGE AGO AGS AHA AHI AHS AIA AID AIL AIM AIN AIR AIS AIT AJI AKA AKE ALA ALB ALE ALL ALP ALS ALT ALU AMA AME AMI AMP AMU ANA AND ANE ANI ANN ANS ANT ANY APE APO APP APT ARB ARC ARD ARE ARF ARK ARM ARO ARS ART ARY ASH ASK ASP ASS ATE ATS ATT AUA AUE AUF AUK AVA AVE AVI AVO AWA AWE AWK AWL AWN AXE AYE AYS AYU AZO BAA BAC BAD BAE BAG BAH BAL BAM BAN BAO BAP BAR BAS BAT BAW BAY BED BEE BEG BEL BEN BES BET BEY BEZ BIB BID BIG BIN BIO BIS BIT BIZ BOA BOB BOD BOG BOH BOI BOK BON BOO BOP BOR BOS BOT BOW BOX BOY BRA BRO BRR BRU BUB BUD BUG BUM BUN BUR BUS BUT BUY BYE BYS CAA CAB CAD CAF CAG CAL CAM CAN CAP CAR CAT CAW CAY CAZ CEE CEL CEP CHA CHE CHI CID CIG CIS CIT CLY COB COD COG COL CON COO COP COR COS COT COW COX COY COZ CRU CRY CUB CUD CUE CUM CUP CUR CUT CUZ CWM DAB DAD DAE DAG DAH DAK DAL DAM DAN DAP DAS DAW DAY DEB DEE DEF DEG DEI DEL DEN DEP DEV DEW DEX DEY DIB DID DIE DIF DIG DIM DIN DIP DIS DIT DIV DOB DOC DOD DOE DOF DOG DOH DOL DOM DON DOO DOP DOR DOS DOT DOW DOX DOY DRY DSO DUB DUD DUE DUG DUH DUI DUM DUN DUO DUP DUR DUX DYE DZO EAN EAR EAS EAT EAU EBB ECH ECO ECU EDH EDS EEK EEL EEN EEW EFF EFS EFT EGG EGGY EGO EHS EIK EKE ELD ELF ELK ELL ELM ELS ELT EME EMO EMS EMU END ENE ENG ENS EON ERA ERE ERF ERG ERK ERM ERN ERR ERS ESS EST ETA ETH EUK EVE EVO EWE EWK EWT EWW EXO EYE FAA FAB FAD FAE FAG FAH FAM FAN FAP FAR FAS FAT FAV FAW FAY FED FEE FEG FEH FEM FEN FER FES FET FEU FEW FEY FEZ FIB FID FIE FIG FIL FIN FIR FIT FIX FIZ FLU FLY FOF FOE FOG FOH FON FOO FOP FOR FOU FOX FOY FRA FRO FUB FUD FUG FUM FUN FUR GAB GAD GAE GAG GAK GAL GAM GAN GAP GAR GAS GAT GAU GAW GAY GED GEE GEL GEM GEN GEO GER GET GEY GHI GIB GID GIE GIF GIG GIN GIO GIP GIS GIT GJU GNU GOA GOB GOD GOE GON GOO GOR GOS GOT GOV GOX GRR GUB GUE GUL GUM GUN GUP GUR GUS GUT GUV GUY GYM GYP HAD HAE HAG HAH HAJ HAM HAN HAO HAP HAS HAT HAW HAY HEH HEM HEN HEP HER HES HET HEW HEX HEY HIC HID HIE HIM HIN HIP HIS HIT HMM HOA HOB HOC HOD HOE HOG HOH HOI HOM HON HOO HOP HOS HOT HOW HOX HOY HUB HUE HUG HUH HUH HUH HUI HUM HUN HUP HUT HYE HYP ICE ICH ICK ICY IDE IDS IFF IFS IGG ILK ILL IMP ING INK INN INS INT ION IOS IRE IRK ISH ISM ISO ITA ITS IWI IVY JAB JAG JAI JAK JAM JAP JAR JAW JAY JEE JET JEU JIB JIG JIN JIZ JOB JOE JOG JOL JOR JOT JOW JOY JUD JUG JUN JUS JUT KAB KAE KAF KAI JAK JAM JAP JAR JAW JAY JEE JET JEU JIB JIG JIN JIZ JOB JOE JOG JOL JOR JOT JOW JOY JUD JUG JUN JUS JUT KAB KAE KAF KAI KAK KAM KAS KAT KAW KAY KEA KEB KEB KED KEF KEG KEN KEP KET KEX KEY KHI KID KIF KIN KIP KIR KIS KIT KOA KOB KOI KON KOP KOR KOS KOW KUE KYE KYU LAB LAC LAD LAG LAH LAM LAP LAR LAS LAT LAV LAW LAX LAY LEA LED LEE LEG LEI LEK LEP LEU LEV LEW LEX LEY LIB LID LIE LIG LIN LIP LIS LIT LOB LOC LOD LOG LOO LOP LOR LOS LOT LOU LOW LOX LOY LUD LUG LUM LUN LUR LUV LUX LUZ LYE LYM MAA MAC MAD MAE MAG MAK MAL MAM MAN MAP MAR MAS MAT MAW MAX MAY MED MEE MEG MEH MEL MEM MEN MES MET MEU MEW MHO MIC MID MIG MIL MIM MIR MIS MIX MIZ MMM MNA MOA MOB MOC MOD MOE MOG MOI MOL MOM MON MOO MOP MOR MOS MOT MOU MOW MOY MOZ MUD MUG MUM MUN MUS MUT MUX MYC NAB NAE NAG NAH NAM NAN NAP NAS NAT NAV NAW NAY NEB NED NEE NEF NEG NEK NEP NET NEW NIB NID NIE NIL NIM NIP NIS NIT NIX NOB NOD NOG NOH NOM NON NOO NOR NOS NOT NOW NOX NOY NTH NUB NUG NUN NUR NUS NUT NYE NYM NYS OAF OAK OAR OAT OBA OBE OBI OBO OBS OCA OCH ODA ODD ODE ODS OES OFF OFT OHM OHO OHS OIK OIL OIS OKA OKE OLD OLE OLM OMA OMS ONE ONO ONS ONY OOF OOH OOM OON OOP OOR OOS OOT OPE OPS OPT ORA ORB ORC ORD ORE ORF ORG ORS ORT OSE OUD OUK OUP OUR OUS OUT OVA OWE OWL OWN OWO OWT OXO OXY OYE OYS PAC PAD PAH PAK PAL PAM PAN PAP PAR PAS PAT PAU PAV PAW PAX PAY PEA PEC PED PEE PEG PEH PEL PEN PEP PER PES PET PEW PHI PHO PHT PIA PIC PIE PIG PIN PIP PIR S PIT PIU PIX PLU PLY POA POD POH POI POL POM POO POP POR POS POT POW POX POZ PRE PRO PRY PSI PSST PUB PUD PUG PUH PUL PUN PUP PUR PUS PUT PUY PWN PYA PYE PYX QAT QIN QIS QUA RAD RAG RAH RAI RAJ RAM RAN RAP RAS RAT RAV RAW RAX RAY REB REC RED REE REF REG REH REI REM REN REO REP RES RET REV REW REX REZ RHO RHY RIA RIB RID RIF RIG RIM RIN RIP RIT RIZ ROB ROC ROD ROE ROK ROM ROO ROT ROW RUB RUC RUD RUE RUG RUM RUN RUT RYA RYE RYU SAB SAC SAD SAE SAG SAI SAL SAM SAN SAP SAR SAT SAU SAV SAW SAX SAY SAZ SEA SEC SED SEE SEG SEI SEL SEN SER SET SEV SEW SEX SEY SEZ SHA SHE SHH SHO SHY SIB SIC SIF SIG SIK SIM SIN SIP SIR SIS SIT SIX SKA SKI SKY SLY SMA SNY SOB SOC SOD SOG SOH SOL SOM SON SOP SOS SOT SOU SOV SOW SOX SOY SOZ SPA SPY SRI STY SUB SUD SUE SUG SUI SUK SUM SUN SUP SUQ SUR SUS SWY SYE SYN TAB TAD TAE TAG TAI TAJ TAK TAM TAN TAO TAP TAR TAS TAT TAU TAV TAW TAX TAY TEA TEC TED TEE TEF TEG TEL TEN TES TET TEW TEX THE THO THY TIC TID TIE TIG TIK TIL TIN TIP TIS TIT TIX TIZ TOC TOD TOE TOG TOM TON TOO TOP TOR TOT TOW TOY TRY TSK TUB UFO UGH UGS UKE ULE ULU UME UMM UMP UMS UMU UNI UNS UPO UPS URB URD URE URN URP USE UTA UTE UTS UTU UVA UWU VAC VAE VAG VAN VAR VAS VAT VAU VAV VAW VAX VEE VEG VET VEX VIA VID VIE VIG VIM VIN VIS VLY VOE VOG VOL VOM VOR VOW VOX VUG VUM WAB WAD WAE WAG WAI WAN WAP WAR WAS WAT WAW WAX WAY WAZ WEB WED WEE WEM WEN WET WEX WEY WHA WHO WHY WIG WIN WIS WIT WIZ WOE WOF WOG WOK WON WOO WOP WOS WOT WOW WOX WRY WUD WUS WUZ WYE WYN XED XIS YAD YAE YAG YAH YAK YAM YAP YAR YAS YAW YAY YEA YEH YEN YEP YER YES YET YEW YEX YEZ YGO YID YIN YIP YOB YOD YOK YOM YON YOU YOW YUG YUK YUM YUP YUS ZAG ZAP ZAS ZAX ZEA ZED ZEE ZEK ZEL ZEN ZEP ZEX ZHO ZIG ZIN ZIP ZIT ZIZ ZOA ZOL ZOO ZOS ZUZ ZZZ".split(' '),
+            "Vowel": {
+                "all": ["AA","AE","AI","EA","EE","IO","OE","OI","OO","OU","AIA","AUA","AUE","EAU","ACAI","AEON","AERO","AGEE","AGIO","AGUE","AIAS","AIDA","AIDE","AIGA","AINE","AITU","AJEE","AKEE","ALAE","ALEE","ALOE","ALOO","AMIA","AMIE","ANOA","AQUA","AREA","ARIA","ARIE","ASEA","ATUA","AUAS","AULA","AUNE","AURA","AUTO","AWEE","BEAU","CIAO","EALE","EASE","EAUS","EAUX","EAVE","EEEW","EIDE","EINA","EINE","EMEU","EOAN","EPEE","ETUI","EUGE","EUOI","EURO","EVOE","HIOI","HUIA","IDEA","IDEE","ILEA","ILIA","INIA","IOTA","IURE","IXIA","JIAO","KAIE","KUIA","LIEU","LUAU","MEOU","MOAI","MOOI","MOUE","NAOI","OBIA","OBOE","ODEA","OGEE","OHIA","OLEA","OLEO","OLIO","ONIE","OOSE","OOZE","OUMA","OUPA","OUTA","OUZO","OWIE","PAUA","QUAI","RAIA","ROUE","TOEA","UNAI","UNAU","URAO","UREA","UVAE","UVEA","VIAE","ZOEA","AALII","ADIEU","AECIA","AENET","AERIE","AIDOI","AINEE","AIOLI","AIYEE","AQUAE","AREAE","AUDIO","AULOI","AURAE","AUREI","BOOAI","COOEE","EERIE","LOOIE","LOUIE","MIAOU","OIDIA","OORIE","OUIJA","OURIE","OUTIE","QUEUE","URAEI","ZOAEA","ZOEAE","ZOOEA"],
+                "2": ["AA","AE","AI","EA","EE","IO","OE","OI","OO","OU"],
+                "3": ["AIA","AUA","AUE","EAU"],
+                "4": ["ACAI","AEON","AERO","AGEE","AGIO","AGUE","AIAS","AIDA","AIDE","AIGA","AINE","AITU","AJEE","AKEE","ALAE","ALEE","ALOE","ALOO","AMIA","AMIE","ANOA","AQUA","AREA","ARIA","ARIE","ASEA","ATUA","AUAS","AULA","AUNE","AURA","AUTO","AWEE","BEAU","CIAO","EALE","EASE","EAUS","EAUX","EAVE","EEEW","EIDE","EINA","EINE","EMEU","EOAN","EPEE","ETUI","EUGE","EUOI","EURO","EVOE","HIOI","HUIA","IDEA","IDEE","ILEA","ILIA","INIA","IOTA","IURE","IXIA","JIAO","KAIE","KUIA","LIEU","LUAU","MEOU","MOAI","MOOI","MOUE","NAOI","OBIA","OBOE","ODEA","OGEE","OHIA","OLEA","OLEO","OLIO","ONIE","OOSE","OOZE","OUMA","OUPA","OUTA","OUZO","OWIE","PAUA","QUAI","RAIA","ROUE","TOEA","UNAI","UNAU","URAO","UREA","UVAE","UVEA","VIAE","ZOEA"],
+                "5": ["AALII","ADIEU","AECIA","AENET","AERIE","AIDOI","AINEE","AIOLI","AIYEE","AQUAE","AREAE","AUDIO","AULOI","AURAE","AUREI","BOOAI","COOEE","EERIE","LOOIE","LOUIE","MIAOU","OIDIA","OORIE","OUIJA","OURIE","OUTIE","QUEUE","URAEI","ZOAEA","ZOEAE","ZOOEA"]
+            },
+            "Bingo": {
+                "AINERS": "ARCSINE ARSENIC CARNIES CERASIN RANDIES SANDIER SARDINE INFARES SERAFIN ANGRIES EARINGS ERASING GAINERS GRAINES REAGINS REGAINS REGINAS SEARING SERINGA ARSHINE HERNIAS NEARISH SENARII INJERAS SNAKIER ALINERS NAILERS RENAILS MARINES REMAINS SEMINAR SIRNAME INSANER INSNARE ERASION PANIERS RAPINES SIERRAN SNARIER ARSINES SARNIES ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN AVENIRS RAVINES".split(' '),
+                "EASTER": "AERATES BEATERS BERATES REBATES CERATES CREATES ECARTES SECRETA DEAREST DERATES ESTRADE REASTED REDATES SEDATER STEARED TASERED AFREETS FEASTER ERGATES RESTAGE AETHERS HEATERS REHEATS AERIEST SERIATE RETAKES SAKERET ELATERS REALEST RELATES RESLATE STEALER REMATES RETEAMS STEAMER TEAMERS EARNEST EASTERN NEAREST RATEENS STERANE ROSEATE EPATERS REPEATS RETAPES RETEARS SERRATE TEARERS EASTERS RESEATS SAETERS SEAREST SEATERS STEARES TEASERS TESSERA ESTREAT RESTATE RETASTE AUSTERE SWEATER RETAXES".split(' '),
+                "RETINA": "ATEBRIN CANTIER CERATIN CERTAIN CREATIN CRINATE NACRITE TACRINE ANTIRED DETRAIN TRAINED ARENITE RETINAE TRAINEE FAINTER FENITAR GRANITE GRATINE INGRATE TANGIER TEARING HAIRNET INEARTH THERIAN INERTIA JANTIER NARTJIE KERATIN ENTRAIL LATRINE RATLINE RELIANT RETINAL TRENAIL MERANTI MINARET RAIMENT ENTRAIN TRANNIE NOTAIRE OTARINE INAPTER PAINTER PERTAIN REPAINT RETRAIN TERRAIN TRAINER ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN INTREAT ITERANT NATTIER NITRATE TARTINE TERTIAN RUINATE TAURINE URANITE URINATE TAWNIER TINWARE".split(' '),
+                "SANTER": "ANESTRA SANTERA BANTERS BARNETS CANTERS CARNETS NECTARS RECANTS SCANTER TANRECS TRANCES DARNEST ENDARTS STANDER STARNED EARNEST EASTERN NEAREST RATEENS STERANE ARGENTS GARNETS STRANGE ANTHERS HARTENS THENARS ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN RANKEST STARKEN TANKERS ANTLERS RENTALS SALTERN SLANTER STERNAL ARTSMEN MARTENS SARMENT SMARTEN TANNERS ATONERS SANTERO SENATOR TREASON ARPENTS ENTRAPS PANTERS PARENTS PASTERN PERSANT TREPANS ERRANTS RANTERS SARSNET TRANSES NATTERS RATTENS AUNTERS NATURES SAUNTER SERVANT TAVERNS VERSANT STRAWEN WANTERS TRAYNES".split(' '),
+                "SATIRE": "ARISTAE ASTERIA ATRESIA BAITERS BARITES REBAITS TERBIAS ATRESIC CRISTAE RACIEST STEARIC ARIDEST ASTERID ASTRIDE DIASTER DISRATE STAIDER STAIRED TARDIES TIRADES TRADIES AERIEST SERIATE FAIREST AGISTER AIGRETS GAITERS SEAGIRT STAGIER STRIGAE TIRAGES TRIAGES HASTIER SHERIAT AIRIEST IRISATE ARKITES KARITES REALIST RETAILS SALTIER SALTIRE SLATIER TAILERS IMARETS MAESTRI MAISTER MASTIER MISRATE SEMITAR SMARTIE ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN OARIEST OTARIES ROASTIE PAIREST PARTIES PASTIER PIASTER PIASTRE PIRATES PRATIES RAPIEST TRAIPSE ARTSIER SERRATI TARRIES TARSIER ARSIEST ARTSIES SAIREST SATIRES TIRASSE ARTIEST ARTISTE ATTIRES IRATEST RATITES STRIATE TASTIER TERTIAS RAVIEST TAIVERS VASTIER VERITAS WAISTER WAITERS WARIEST WASTRIE".split(' '),
+                "SENIOR": "ERASION COINERS CRINOSE CRONIES ORCEINS ORCINES RECOINS SERICON DINEROS DONSIER INDORSE ORDINES ROSINED SORDINE ERINGOS IGNORES REGIONS SIGNORE HEROINS INSHORE IONISER IRONIES IRONISE NOISIER JOINERS REJOINS LIENORS NEROLIS SONLIER MERINOS MERSION NORMIES RONNIES EROSION ORPINES PIONERS PROINES IRONERS ROSINER ORNISES SENIORS SONERIS SONSIER NORITES OESTRIN ORIENTS STONIER TERSION TRIONES URINOSE ENVIROS RENVOIS VERSION SNOWIER OREXINS".split(' '),
+                "SINTER": "ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN CISTERN CRETINS SNIRTED TINDERS ENIRES ENTRIES NERITES RETINES TRENISE TRIENES SNIFTER RESTING STINGER HINTERS NITHERS REKNITS SKINTER STINKER TINKERS LINTERS SLINTER SNIRTLE ENTRISM MINSTER MINTERS REMINTS INTERNS TINNERS NORITES OESTRIN ORIENTS STONIER TERSION TRIONES NIPTERS PTERINS ESTRINS INSERTS SINTERS STRINES ENTRIST RETINTS STINTER TINTERS NUTSIER TRIUNES UNITERS INVERTS STRIVEN TWINERS WINTERS SINTERY".split(' '),
+                "TISANE": "ENTASIA TAENIAS BANTIES BASINET BESAINT BESTAIN ACETINS CANIEST CINEAST DESTAIN DETAINS INSTEAD NIDATES SAINTED SATINED STAINED ETESIAN FAINEST FANSITE NAIFEST EASTING EATINGS GAINEST GENISTA INGATES INGESTA SEATING TAGINES TANGIES TEASING TSIGANE HENTAIS SHEITAN STHENIA ISATINE JANTIES TAJINES INTAKES KENTIAS TANKIES EASTLIN ELASTIN ENTAILS NAILSET SALIENT SALTINE SLAINTE STANIEL TENAILS ETAMINS INMATES MAINEST MANTIES TAMEINS TAMINES INANEST NANITES STANINE TANNIES ATONIES PANTIES PATINES SAPIENT SPINATE ANESTRI ANTSIER NASTIER RATINES RESIANT RETAINS RETINAS RETSINA STAINER STARNIE STEARIN ENTASIS NASTIES SEITANS SESTINA TANSIES TISANES INSTATE SATINET TANTIES AUNTIES SINUATE NAIVEST NATIVES VAINEST AWNIEST TAWNIES WANIEST WANTIES ANTISEX SEXTAIN ZANIEST ZEATINS".split(' '),
+                "TONERS": "ATONERS SANTERO SENATOR TREASON BRETONS SORBENT CONSTER CORNETS CRESTON CRETONS CRONETS RETCONS RODENTS SNORTED ESTRONE FRONTES TONGERS HORNETS SHORTEN THRENOS THRONES NORITES OESTRIN ORIENTS STONIER TERSION TRIONES REKNOTS STONKER STROKEN TONKERS LENTORS LORNEST MENTORS MONSTER MONTRES STONERN TONNERS ENROOTS POSTERN PRONEST SNORTER NESTORS STONERS TENSORS ROTTENS SNOTTER STENTOR TENOURS TONSURE TYRONES".split(' '),
+                "TONIES": "ATONIES BONIEST EBONIST NOTICES SECTION DITONES STONIED ETHIONS HISTONE INOSITE JONTIES ENTOILS LIONETS ONLIEST MESTINO MOISTEN MONTIES SENTIMO INTONES TENSION ISOTONE TOONIES PINTOES POINTES PONTIES NORITES OESTRIN ORIENTS STONIER TERSION TRIONES NOSIEST SONTIES STONIES SNOTTIE TONIEST TONITES TOWNIES TWONIES TOXINES".split(' ')
+            }
+        };
+
+        const scrabblePoints = { A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5, L:1, M:3, N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1, V:4, W:4, X:8, Y:4, Z:10 };
+
+        let currentCategory = '2', wordListPool = [], allAnagrams = [], foundWords = [], score = 0, streak = 0, solvedTileSets = 0, isPaused = false, isRevealedMode = false, playerName = "Player", timerInterval = null, timeLeft = 10, maxTime = 12, sessionHistory = [], currentBaseWord = "";
+        let hintRevealedCount = 0;
+        let hintTargetWord = "";
+        let selectedCharacter = "🐱";
+
+        function showScreen(key) { 
+            const screens = document.querySelectorAll('#app > div[id$="-screen"]');
+            screens.forEach(s => s.classList.add('hidden'));
+            const target = document.getElementById(key + '-screen');
+            if (target) target.classList.remove('hidden'); 
+        }
+
+        function pickChar(char) {
+            selectedCharacter = char;
+            const buttons = document.querySelectorAll('.char-btn');
+            buttons.forEach(btn => { btn.classList.toggle('active', btn.innerText === char); });
+        }
+
+        function updatePlayerNameDisplays() {
+            const name = playerName || "Player";
+            document.getElementById('setup-player-name').innerText = name;
+            document.getElementById('game-player-name').innerText = name;
+            document.getElementById('result-player-name').innerText = name + "!";
+            document.getElementById('setup-char-icon').innerText = selectedCharacter;
+            document.getElementById('game-char-icon').innerText = selectedCharacter;
+            document.getElementById('result-char-icon').innerText = selectedCharacter;
+        }
+
+        function goToSetup() { 
+            playerName = document.getElementById('player-name-input').value.trim() || "Player"; 
+            updatePlayerNameDisplays();
+            showScreen('setup'); 
+        }
+
+        function backToCategories() { 
+            document.getElementById('main-category-section').classList.remove('hidden'); 
+            document.getElementById('sub-category-section').classList.add('hidden'); 
+        }
+
+        function selectCategory(cat, name) {
+            currentCategory = cat;
+            document.getElementById('main-category-section').classList.add('hidden');
+            document.getElementById('sub-category-section').classList.remove('hidden');
+            const catNameLabel = document.getElementById('selected-cat-name');
+            if (catNameLabel) catNameLabel.innerText = name;
+
+            const select = document.getElementById('subcat-select');
+            if (!select) return;
+            select.innerHTML = '';
+            
+            if (cat === 'Bingo') {
+                Object.keys(CSW24.Bingo).forEach(stem => { 
+                    const opt = document.createElement('option'); opt.value = stem; opt.innerText = stem; select.appendChild(opt); 
+                });
+            } else if (cat === 'Vowel') {
+                const options = [
+                    {val: "all", text: `All Vowels (${CSW24.Vowel.all.length})`},
+                    {val: "2", text: `2 Letters (${CSW24.Vowel["2"].length})`},
+                    {val: "3", text: `3 Letters (${CSW24.Vowel["3"].length})`},
+                    {val: "4", text: `4 Letters (${CSW24.Vowel["4"].length})`},
+                    {val: "5", text: `5 Letters (${CSW24.Vowel["5"].length})`}
+                ];
+                options.forEach(o => {
+                    const opt = document.createElement('option'); opt.value = o.val; opt.innerText = o.text; select.appendChild(opt);
+                });
+            } else {
+                const words = CSW24[cat];
+                let html = `<option value="All">All (${words.length})</option>`;
+                html += `<option value="Heavy">Heavy (J,Q,X,Z)</option>`;
+                const counts = {}; words.forEach(w => counts[w[0]] = (counts[w[0]] || 0) + 1);
+                Object.keys(counts).sort().forEach(l => { html += `<option value="${l}">${l} (${counts[l]})</option>`; });
+                select.innerHTML = html;
+            }
+        }
+
+        function getWordSelection() {
+            const selectEl = document.getElementById('subcat-select');
+            if (!selectEl) return [];
+            const sub = selectEl.value;
+            if (currentCategory === 'Bingo') return [...CSW24.Bingo[sub]];
+            if (currentCategory === 'Vowel') return [...CSW24.Vowel[sub]];
+            
+            const all = CSW24[currentCategory];
+            if (sub === 'All') return [...all];
+            if (sub === 'Heavy') return all.filter(w => /[JQXZ]/.test(w));
+            return all.filter(w => w[0] === sub);
+        }
+
+        function startGame() { 
+            wordListPool = getWordSelection(); 
+            score = 0; streak = 0; solvedTileSets = 0; sessionHistory = []; 
+            showScreen('game'); nextWord(); 
+        }
+
+        function nextWord() {
+            if (currentBaseWord) {
+                sessionHistory.push({ rack: currentBaseWord.split('').sort().join(''), all: [...allAnagrams], found: [...foundWords] });
+            }
+            if (wordListPool.length === 0) return endGame();
+            
+            const idx = Math.floor(Math.random() * wordListPool.length);
+            currentBaseWord = wordListPool.splice(idx, 1)[0];
+            
+            let master;
+            if (currentCategory === 'Bingo') master = CSW24.Bingo[document.getElementById('subcat-select').value];
+            else if (currentCategory === 'Vowel') master = CSW24.Vowel[document.getElementById('subcat-select').value];
+            else master = CSW24[currentCategory];
+
+            const rackSorted = currentBaseWord.split('').sort().join('');
+            allAnagrams = master.filter(w => w.split('').sort().join('') === rackSorted);
+            allAnagrams = [...new Set(allAnagrams)];
+            
+            wordListPool = wordListPool.filter(w => !allAnagrams.includes(w));
+
+            foundWords = []; isRevealedMode = false;
+            hintRevealedCount = 0; hintTargetWord = "";
+
+            renderTiles(currentBaseWord); renderFoundWords(); 
+            updateUI(); startTimer();
+            
+            const input = document.getElementById('answer-input');
+            if (input) { input.value = ''; input.disabled = false; input.focus(); }
+            document.getElementById('feedback').innerText = '';
+        }
+
+        function renderTiles(word) {
+            const container = document.getElementById('tile-display'); 
+            container.innerHTML = '';
+            const letters = word.split('').sort(() => Math.random() - 0.5);
+            
+            if (letters.length >= 7) {
+                const row1 = document.createElement('div'); row1.className = "flex justify-center gap-3";
+                const row2 = document.createElement('div'); row2.className = "flex justify-center gap-3";
+                letters.forEach((char, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'scrabble-tile shadow-sm'; div.dataset.letter = char;
+                    div.innerHTML = `${char}<span class="tile-value">${scrabblePoints[char.toUpperCase()]||0}</span>`;
+                    if (index < Math.ceil(letters.length/2)) row1.appendChild(div); else row2.appendChild(div);
+                });
+                container.appendChild(row1); container.appendChild(row2);
+            } else {
+                const row = document.createElement('div'); row.className = "flex flex-wrap justify-center gap-3";
+                letters.forEach(char => {
+                    const div = document.createElement('div');
+                    div.className = 'scrabble-tile shadow-sm';
+                    div.dataset.letter = char;
+                    div.innerHTML = `${char}<span class="tile-value">${scrabblePoints[char.toUpperCase()]||0}</span>`;
+                    row.appendChild(div);
+                });
+                container.appendChild(row);
+            }
+        }
+
+        function renderFoundWords() {
+            const container = document.getElementById('found-words-list'); 
+            container.innerHTML = '';
+            allAnagrams.forEach(w => {
+                const span = document.createElement('span');
+                if (foundWords.includes(w)) { span.className = 'found-word-tag'; span.innerText = w; }
+                else if (isRevealedMode) { span.className = 'missing-word-tag'; span.innerText = w; }
+                else { span.className = 'inline-block px-4 py-1.5 m-1 bg-slate-100 border-2 border-slate-200 rounded-full text-[13px] text-slate-400 font-bold shadow-sm'; span.innerText = '?'.repeat(w.length); }
+                container.appendChild(span);
+            });
+        }
+
+        function updateTileColors() {
+            const input = document.getElementById('answer-input');
+            let val = input.value.toUpperCase();
+            let availableLetters = currentBaseWord.split('');
+            let sanitizedValue = "";
+            for (let char of val) {
+                let index = availableLetters.indexOf(char);
+                if (index !== -1) { sanitizedValue += char; availableLetters.splice(index, 1); }
+            }
+            if (input.value !== sanitizedValue) input.value = sanitizedValue;
+            const typed = input.value.toUpperCase().split('');
+            const tiles = Array.from(document.querySelectorAll('#tile-display .scrabble-tile'));
+            tiles.forEach(t => t.classList.remove('used'));
+            typed.forEach(char => {
+                const availableTile = tiles.find(t => t.dataset.letter === char && !t.classList.contains('used'));
+                if (availableTile) availableTile.classList.add('used');
+            });
+        }
+
+        function checkAnswer() {
+            if (isPaused) return;
+            const input = document.getElementById('answer-input'), fb = document.getElementById('feedback');
+            const val = input.value.toUpperCase().trim();
+            if (allAnagrams.includes(val) && !foundWords.includes(val)) {
+                streak++;
+                let wordScore = val.split('').reduce((sum, char) => sum + (scrabblePoints[char.toUpperCase()] || 0), 0);
+                let earned = wordScore * streak;
+                foundWords.push(val); score += earned; 
+                fb.innerText = `Nice! +${earned}` + (streak > 1 ? ` (${streak}x Streak!)` : ""); 
+                fb.className = "text-emerald-500 font-black";
+                input.value = ''; renderFoundWords(); updateUI(); updateTileColors();
+                if (val === hintTargetWord) { hintTargetWord = ""; hintRevealedCount = 0; }
+                if (foundWords.length === allAnagrams.length) { 
+                    solvedTileSets++; clearInterval(timerInterval); setTimeout(nextWord, 1000); 
+                } else { startTimer(); updateUI(); }
+            } else {
+                streak = 0; score = Math.max(0, score - 2); 
+                fb.innerText = "Wrong! -2 pts"; fb.className = "text-rose-500 font-black";
+                input.parentElement.classList.add('shake'); setTimeout(() => input.parentElement.classList.remove('shake'), 500);
+                updateUI();
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval); 
+            maxTime = (currentCategory === 'Bingo' || currentCategory === 'Vowel') ? 20 : 15;
+            timeLeft = maxTime; 
+            const timerBar = document.getElementById('timer-bar');
+            timerBar.classList.remove('timer-bar-transition');
+            timerBar.style.width = '100%';
+            setTimeout(() => { timerBar.classList.add('timer-bar-transition'); }, 20);
+            timerInterval = setInterval(() => { 
+                if (!isPaused) { 
+                    timeLeft--; 
+                    timerBar.style.width = (timeLeft / maxTime * 100) + '%'; 
+                    if (timeLeft <= 0) { clearInterval(timerInterval); revealAnswers(); } 
+                } 
+            }, 1000);
+        }
+
+        function revealAnswers() { 
+            isRevealedMode = true; streak = 0; renderFoundWords(); 
+            document.getElementById('answer-input').disabled = true; 
+            setTimeout(nextWord, 3000); 
+        }
+        
+        function togglePause() { 
+            isPaused = !isPaused; 
+            document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused);
+            if (!isPaused) document.getElementById('answer-input').focus();
+        }
+        
+        function exitToHome() { 
+            clearInterval(timerInterval); 
+            if (currentBaseWord) { sessionHistory.push({ rack: currentBaseWord.split('').sort().join(''), all: [...allAnagrams], found: [...foundWords] }); currentBaseWord = ""; }
+            endGame(); 
+        }
+
+        function updateUI() { 
+            document.getElementById('score').innerText = score; 
+            document.getElementById('progress-display').innerText = `${foundWords.length} / ${allAnagrams.length}`; 
+            document.getElementById('remaining-sets-display').innerText = `Sets: ${wordListPool.length}`;
+            document.getElementById('remaining-words-display').innerText = `Words: ${allAnagrams.length - foundWords.length}`;
+        }
+
+        function endGame() {
+            clearInterval(timerInterval); 
+            document.getElementById('final-score').innerText = score; 
+            document.getElementById('final-solved').innerText = solvedTileSets;
+            let totalT = 0, totalF = 0;
+            sessionHistory.forEach(i => { totalT += i.all.length; totalF += i.found.length; });
+            document.getElementById('final-accuracy').innerText = (totalT > 0 ? Math.round((totalF / totalT) * 100) : 0) + '%';
+            if (sessionHistory.length > 0) document.getElementById('study-sheet-btn').classList.remove('hidden');
+            showScreen('result');
+        }
+
+        function showStudySheet() {
+            const content = document.getElementById('study-content'); 
+            content.innerHTML = '';
+            sessionHistory.forEach(item => {
+                const div = document.createElement('div'); div.className = "bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100";
+                div.innerHTML = `<div class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Rack: ${item.rack}</div><div class="flex flex-wrap gap-2">${item.all.map(w => `<span class="${item.found.includes(w) ? 'text-emerald-600' : 'text-[#6082B6] underline decoration-slate-200 decoration-4'} font-black text-xl">${w}</span>`).join('')}</div>`;
+                content.appendChild(div);
+            });
+            document.getElementById('study-modal').classList.remove('hidden');
+        }
+
+        function closeStudySheet() { document.getElementById('study-modal').classList.add('hidden'); }
+        function resetApp() { currentBaseWord = ""; showScreen('welcome'); backToCategories(); }
+        function skipWord() { clearInterval(timerInterval); streak = 0; score = Math.max(0, score - 2); updateUI(); revealAnswers(); }
+        
+        function useHint() { 
+            if (!hintTargetWord || foundWords.includes(hintTargetWord)) {
+                hintTargetWord = allAnagrams.find(w => !foundWords.includes(w));
+                hintRevealedCount = 0;
+            }
+            if (hintTargetWord) {
+                if (hintRevealedCount < hintTargetWord.length - 1) {
+                    hintRevealedCount++;
+                    const input = document.getElementById('answer-input');
+                    input.value = hintTargetWord.substring(0, hintRevealedCount);
+                    const penalty = hintRevealedCount * 2;
+                    streak = 0; score = Math.max(0, score - penalty); 
+                    const fb = document.getElementById('feedback');
+                    fb.innerText = `Hint: -${penalty} pts`; fb.className = "text-amber-500 font-black";
+                    updateUI(); updateTileColors();
+                }
+            }
+        }
+        
+        document.getElementById('answer-input').addEventListener('input', updateTileColors);
+        document.getElementById('answer-input').addEventListener('keypress', e => { if (e.key === 'Enter') checkAnswer(); });
+        window.onload = () => showScreen('welcome');
+    </script>
+</body>
+</html>
